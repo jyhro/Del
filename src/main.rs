@@ -24,9 +24,28 @@ fn print_usage() {
 fn main() {
     // Configuración
     let enable_color = true;
-    let home_dir = dirs::home_dir().expect("No se pudo obtener el directorio home");
-    let trash_dir = home_dir.join(".local/share/Trash");
-    let history_file = home_dir.join(".local/share/del_history");
+
+    // Detectar sistema operativo y definir rutas de trash/historial
+    #[cfg(target_os = "windows")]
+    fn get_trash_and_history() -> (std::path::PathBuf, std::path::PathBuf) {
+        use std::env;
+        let userprofile = env::var("USERPROFILE").expect("No se pudo obtener USERPROFILE");
+        let trash =
+            std::path::PathBuf::from(format!("{}\\AppData\\Local\\Temp\\Trash", userprofile));
+        let history =
+            std::path::PathBuf::from(format!("{}\\AppData\\Local\\del_history", userprofile));
+        (trash, history)
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    fn get_trash_and_history() -> (std::path::PathBuf, std::path::PathBuf) {
+        let home = dirs::home_dir().expect("No se pudo obtener el directorio home");
+        let trash = home.join(".local/share/Trash");
+        let history = home.join(".local/share/del_history");
+        (trash, history)
+    }
+
+    let (trash_dir, history_file) = get_trash_and_history();
 
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
