@@ -1,84 +1,53 @@
 # del
 
-**del** es una utilidad de línea de comandos escrita en Rust para eliminar archivos y carpetas de forma segura (enviándolos a una papelera) o permanente, inspirada en la funcionalidad de la papelera de sistemas operativos modernos.
+A safe file deletion utility for Unix/macOS and Windows.
 
-## Características
+## Features
 
-- Elimina archivos y carpetas moviéndolos a una papelera (`~/.local/share/Trash`)
-- Permite restaurar el último archivo/carpeta eliminado
-- Elimina de forma permanente con confirmación
-- Listado del contenido de la papelera
-- Historial de eliminaciones
-- Salida colorizada y mensajes en español
-- Modular y fácil de mantener (principios SOLID)
+- **Safe deletion**: Move files to a trash directory instead of permanent deletion
+- **Restore**: Restore files from trash by index or restore the last deleted file
+- **History**: Track deletion history with timestamps and file sizes
+- **Permanent deletion**: Securely delete files that cannot be recovered
+- **Cross-platform**: Works on Unix/Linux, macOS, and Windows
 
-## Instalación
+## Usage
 
-1. Clona el repositorio:
+```bash
+# Delete a file to trash
+del file.txt
 
-   ```sh
-   git clone <repo-url>
-   cd del
-   ```
+# Delete multiple files
+del file1.txt file2.txt folder/
 
-2. Compila el proyecto:
+# Restore the last deleted file
+del -r
 
-   ```sh
-   cargo build --release
-   ```
+# Restore by history index
+del -r 3
 
-3. (Opcional) Copia el binario a una ruta en tu `$PATH`:
+# Show deletion history
+del --history
 
-   ```sh
-   cp target/release/del ~/.local/bin/
-   ```
+# Clear all history
+del --clear-history
 
-## Uso
+# Delete permanently (with confirmation)
+del -p important.log
 
-```sh
-del [opciones] <archivo/carpeta> [...]
-del -p, --permanent <archivo/carpeta>  # Elimina permanentemente
- del -r, --restore                     # Restaura el último archivo/carpeta
- del --list                            # Lista el contenido de la papelera
- del --help                            # Muestra la ayuda
+# Show help
+del --help
 ```
 
-### Ejemplos
+## How it works
 
-- Eliminar seguro:
+Deleted files are moved to a trash directory (`~/.local/share/Trash` on Unix/macOS) with a timestamp suffix to avoid name collisions. A history file tracks original paths, timestamps, and file sizes for restore operations.
 
-  ```sh
-  del archivo.txt
-  ```
+## Installation
 
-- Eliminar permanente:
+```bash
+cargo install del
+```
 
-  ```sh
-  del -p archivo.txt
-  ```
-
-- Listar papelera:
-
-  ```sh
-  del --list
-  ```
-
-- Restaurar último:
-
-  ```sh
-  del -r
-  ```
-
-## Estructura del proyecto
-
-- `src/main.rs`: Orquestador principal y CLI
-- `src/trash/manager.rs`: Lógica de papelera (mover, restaurar, listar)
-- `src/permanent.rs`: Lógica de eliminación permanente
-
-## Licencia
+## License
 
 MIT
-
-## Autor
-
-del Rust port

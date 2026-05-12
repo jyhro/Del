@@ -2,8 +2,13 @@
 name = "del"
 version = "0.1.0"
 edition = "2024"
+description = "A safe file deletion utility with trash support, restore history, and permanent deletion"
+license = "MIT"
+repository = "https://github.com/jyhro/Del.git"
+readme = "README.md"
 
 [dependencies]
 colored = "3.1.1"
 chrono = "0.4.44"
 dirs = "6.0.0"
+walkdir = "2.5"
