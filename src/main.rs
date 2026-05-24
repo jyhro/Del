@@ -1,5 +1,6 @@
 mod cli;
 mod domain;
+mod history;
 mod output;
 mod permanent;
 mod trash;
@@ -9,6 +10,7 @@ use std::path::PathBuf;
 
 use cli::Command;
 use domain::{Delete, Error, Restore};
+use history::FileHistoryRepository;
 use permanent::PermanentDeleter;
 use trash::TrashManager;
 
@@ -28,6 +30,11 @@ fn get_trash_and_history() -> (PathBuf, PathBuf) {
     (trash, history)
 }
 
+fn make_mgr(trash_dir: PathBuf, history_file: PathBuf) -> TrashManager {
+    let repo = Box::new(FileHistoryRepository::new(history_file));
+    TrashManager::new(trash_dir, repo)
+}
+
 fn main() {
     let (trash_dir, history_file) = get_trash_and_history();
     let args: Vec<String> = env::args().collect();
@@ -41,7 +48,7 @@ fn main() {
                 output::show_no_history();
                 return;
             }
-            let mgr = TrashManager::new(trash_dir, history_file);
+            let mgr = make_mgr(trash_dir, history_file);
             match mgr.list_history() {
                 Ok((entries, pruned)) => output::show_history(&entries, pruned),
                 Err(e) => output::error(e.to_string()),
@@ -56,7 +63,7 @@ fn main() {
             output::show_clear_history_warning();
             match output::confirm() {
                 Ok(true) => {
-                    let mgr = TrashManager::new(trash_dir, history_file);
+                    let mgr = make_mgr(trash_dir, history_file);
                     match mgr.clear_history() {
                         Ok(()) => output::show_history_cleared(),
                         Err(e) => output::error(e.to_string()),
@@ -68,7 +75,7 @@ fn main() {
         }
 
         Command::Restore { index } => {
-            let mgr = TrashManager::new(trash_dir, history_file);
+            let mgr = make_mgr(trash_dir, history_file);
             let result = if let Some(idx) = index {
                 mgr.restore_by_index(idx)
             } else {
@@ -83,7 +90,7 @@ fn main() {
 
         Command::Delete { files, permanent } => {
             let permanent_deleter = PermanentDeleter::new();
-            let mgr = TrashManager::new(trash_dir, history_file);
+            let mgr = make_mgr(trash_dir, history_file);
             for path in &files {
                 if !path.exists() {
                     output::error(format!("'{}' no existe", path.display()));
