@@ -1,46 +1,25 @@
 use chrono::Local;
 use std::fs;
-use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
-use crate::domain::{Delete, DeleteOutcome, Error, HistoryEntry, Restore, RestoreOutcome};
+use crate::domain::{Delete, DeleteOutcome, Error, HistoryEntry, HistoryRepository, Restore, RestoreOutcome};
 
 pub struct TrashManager {
     pub trash_dir: PathBuf,
-    pub history_file: PathBuf,
+    pub history: Box<dyn HistoryRepository>,
 }
 
 impl TrashManager {
-    pub fn new(trash_dir: PathBuf, history_file: PathBuf) -> Self {
-        TrashManager {
-            trash_dir,
-            history_file,
-        }
+    pub fn new(trash_dir: PathBuf, history: Box<dyn HistoryRepository>) -> Self {
+        TrashManager { trash_dir, history }
     }
 
-    pub fn read_history(&self) -> (Vec<HistoryEntry>, usize) {
-        let content = match fs::read_to_string(&self.history_file) {
-            Ok(c) => c,
+    fn read_history(&self) -> (Vec<HistoryEntry>, usize) {
+        let entries = match self.history.read_all() {
+            Ok(e) => e,
             Err(_) => return (Vec::new(), 0),
         };
-
-        let entries: Vec<HistoryEntry> = content
-            .lines()
-            .filter_map(|line| {
-                let parts: Vec<&str> = line.split('|').collect();
-                if parts.len() < 5 {
-                    return None;
-                }
-                Some(HistoryEntry {
-                    original_path: parts[0].to_string(),
-                    file_name: parts[1].to_string(),
-                    trash_path: parts[2].to_string(),
-                    timestamp: parts[3].to_string(),
-                    size: parts[4].parse().unwrap_or(0),
-                })
-            })
-            .collect();
 
         let pruned = crate::domain::prune_stale_entries(&entries);
 
@@ -49,23 +28,11 @@ impl TrashManager {
                 .into_iter()
                 .filter(|e| Path::new(&e.trash_path).exists())
                 .collect();
-            let _ = self.write_history(&active);
+            let _ = self.history.replace_all(&active);
             (active, pruned)
         } else {
             (entries, 0)
         }
-    }
-
-    pub fn write_history(&self, entries: &[HistoryEntry]) -> io::Result<()> {
-        let mut file = fs::File::create(&self.history_file)?;
-        for entry in entries {
-            writeln!(
-                file,
-                "{}|{}|{}|{}|{}",
-                entry.original_path, entry.file_name, entry.trash_path, entry.timestamp, entry.size
-            )?;
-        }
-        Ok(())
     }
 
     pub fn list_history(&self) -> Result<(Vec<HistoryEntry>, usize), Error> {
@@ -79,10 +46,10 @@ impl TrashManager {
     }
 
     pub fn clear_history(&self) -> Result<(), Error> {
-        if !self.history_file.exists() {
+        if !self.history.exists() {
             return Err(Error::NoHistory);
         }
-        fs::write(&self.history_file, "")?;
+        self.history.replace_all(&[])?;
         Ok(())
     }
 }
@@ -115,35 +82,21 @@ impl Delete for TrashManager {
 
         fs::rename(path, &trash_path)?;
 
-        let mut history_warning = None;
-        match fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&self.history_file)
-        {
-            Ok(mut hist) => {
-                if let Err(e) = writeln!(
-                    hist,
-                    "{}|{}|{}|{}|{}",
-                    path.display(),
-                    file_name.to_string_lossy(),
-                    trash_path.display(),
-                    timestamp,
-                    size
-                ) {
-                    history_warning = Some(format!(
-                        "Archivo movido a trash, pero no se pudo registrar en el historial: {}",
-                        e
-                    ));
-                }
-            }
-            Err(e) => {
-                history_warning = Some(format!(
-                    "Archivo movido a trash, pero no se pudo registrar en el historial: {}",
-                    e
-                ));
-            }
-        }
+        let entry = HistoryEntry {
+            original_path: path.display().to_string(),
+            file_name: file_name.to_string_lossy().to_string(),
+            trash_path: trash_path.display().to_string(),
+            timestamp,
+            size,
+        };
+
+        let history_warning = match self.history.append(&entry) {
+            Ok(()) => None,
+            Err(e) => Some(format!(
+                "Archivo movido a trash, pero no se pudo registrar en el historial: {}",
+                e
+            )),
+        };
 
         Ok(DeleteOutcome::Trash {
             dest: trash_path,
@@ -176,7 +129,7 @@ impl Restore for TrashManager {
         if !trash_path.exists() {
             let mut new_entries = entries.clone();
             new_entries.remove(index);
-            self.write_history(&new_entries)?;
+            self.history.replace_all(&new_entries)?;
             return Ok(RestoreOutcome::StaleEntryRemoved);
         }
 
@@ -193,7 +146,7 @@ impl Restore for TrashManager {
 
         let mut new_entries = entries.clone();
         new_entries.remove(index);
-        self.write_history(&new_entries)?;
+        self.history.replace_all(&new_entries)?;
 
         Ok(RestoreOutcome::Restored { dest })
     }
