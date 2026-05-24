@@ -4,6 +4,10 @@ use std::path::Path;
 
 use crate::domain::{self, DeleteOutcome, Error, RestoreOutcome};
 
+pub fn show_version() {
+    println!("del v{}", env!("CARGO_PKG_VERSION"));
+}
+
 pub fn print_usage() {
     println!("del - Eliminar archivos/carpetas de forma segura o permanente\n");
     println!("Uso:");
@@ -17,6 +21,7 @@ pub fn print_usage() {
     println!("  -r, --restore [N]       Restaurar archivo/carpeta (último o por índice N)");
     println!("  --history               Mostrar historial de eliminaciones");
     println!("  --clear-history         Limpiar historial de eliminaciones");
+    println!("  -v, --version           Muestra la versión");
     println!("  --help                  Muestra esta ayuda");
 }
 
