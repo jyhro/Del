@@ -27,8 +27,7 @@ impl fmt::Display for Error {
                 write!(
                     f,
                     "Índice inválido: solo hay {} entradas (recibido {})",
-                    count,
-                    given
+                    count, given
                 )
             }
             Error::NoHistory => write!(f, "No hay historial de eliminaciones"),
@@ -58,6 +57,7 @@ pub trait Restore {
     fn restore_by_index(&self, index: usize) -> Result<RestoreOutcome, Error>;
 }
 
+#[allow(dead_code)]
 pub trait HistoryRepository {
     fn read_all(&self) -> Result<Vec<HistoryEntry>, Error>;
     fn append(&self, entry: &HistoryEntry) -> Result<(), Error>;
@@ -171,10 +171,7 @@ mod tests {
 
     #[test]
     fn test_error_display() {
-        let err = Error::InvalidIndex {
-            given: 5,
-            count: 3,
-        };
+        let err = Error::InvalidIndex { given: 5, count: 3 };
         assert_eq!(
             err.to_string(),
             "Índice inválido: solo hay 3 entradas (recibido 5)"
