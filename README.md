@@ -108,6 +108,21 @@ cargo test <name>     # single test by name
 cargo run -- <args>   # run the CLI
 ```
 
+## Contributing
+
+See the guides for details:
+
+- [CONTRIBUTING.es.md](CONTRIBUTING.es.md)
+- [CONTRIBUTING.en.md](CONTRIBUTING.en.md)
+
+## Roadmap
+
+Planned improvements are listed in [ROADMAP.md](ROADMAP.md).
+
+## Versioning and releases
+
+Releases aim to follow SemVer where practical. Minor versions add features, patch versions fix bugs, and major versions may introduce breaking changes.
+
 ## License
 
 MIT
