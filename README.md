@@ -61,14 +61,14 @@ cargo install del
 Deleted files are moved to a platform-specific trash directory:
 
 | Platform | Trash directory |
-|---|---|
+| --- | --- |
 | Unix / macOS | `~/.local/share/Trash` |
 | Windows | `%USERPROFILE%\AppData\Local\Temp\Trash` |
 
 Files receive a timestamp suffix (e.g. `report.pdf_20260524_135031`) to avoid name collisions. A history file tracks the original path, filename, trash path, timestamp, and file size for restore operations:
 
 | Platform | History file |
-|---|---|
+| --- | --- |
 | Unix / macOS | `~/.local/share/del_history` |
 | Windows | `%USERPROFILE%\AppData\Local\del_history` |
 
@@ -86,7 +86,7 @@ Zero-length files are removed directly without overwrite. Directories are walked
 
 ## Architecture
 
-```
+```txt
 src/
 ├── main.rs        Entrypoint, wiring, platform paths
 ├── domain.rs      Domain types, traits, Error enum
