@@ -12,8 +12,6 @@ use domain::{Delete, Error, Restore};
 use permanent::PermanentDeleter;
 use trash::TrashManager;
 
-use domain::Delete as DeleteTrait;
-
 #[cfg(target_os = "windows")]
 fn get_trash_and_history() -> (PathBuf, PathBuf) {
     let userprofile = env::var("USERPROFILE").expect("No se pudo obtener USERPROFILE");
