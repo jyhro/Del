@@ -14,6 +14,7 @@ pub enum Command {
     ShowHistory,
     ClearHistory,
     Help,
+    Version,
 }
 
 pub fn parse_args(args: &[String]) -> Command {
@@ -28,6 +29,7 @@ pub fn parse_args(args: &[String]) -> Command {
     let mut show_history = false;
     let mut clear_history = false;
     let mut help = false;
+    let mut version = false;
     let mut files: Vec<PathBuf> = Vec::new();
 
     let mut i = 1;
@@ -53,6 +55,7 @@ pub fn parse_args(args: &[String]) -> Command {
             }
             "--history" => show_history = true,
             "--clear-history" => clear_history = true,
+            "--version" | "-v" => version = true,
             "--help" | "-h" => help = true,
             arg if !arg.starts_with('-') => files.push(PathBuf::from(arg.to_string())),
             arg => {
@@ -64,6 +67,10 @@ pub fn parse_args(args: &[String]) -> Command {
             }
         }
         i += 1;
+    }
+
+    if version {
+        return Command::Version;
     }
 
     if help {
@@ -104,6 +111,8 @@ fn suggest_flag(unknown: &str) -> Option<&'static str> {
         "--clear-history",
         "--help",
         "-h",
+        "--version",
+        "-v",
     ];
 
     let mut best: Option<&'static str> = None;
@@ -194,6 +203,18 @@ mod tests {
     fn test_parse_help() {
         let args = vec!["del".to_string(), "--help".to_string()];
         assert_eq!(parse_args(&args), Command::Help);
+    }
+
+    #[test]
+    fn test_parse_version() {
+        let args = vec!["del".to_string(), "--version".to_string()];
+        assert_eq!(parse_args(&args), Command::Version);
+    }
+
+    #[test]
+    fn test_parse_version_short() {
+        let args = vec!["del".to_string(), "-v".to_string()];
+        assert_eq!(parse_args(&args), Command::Version);
     }
 
     #[test]
