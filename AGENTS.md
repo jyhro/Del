@@ -4,7 +4,7 @@ Single Rust binary crate (edition 2024). No workspace, no lib.rs, no integration
 
 ## Module structure
 
-```
+```txt
 src/
 ├── main.rs        Entrypoint, wiring, platform paths (#[cfg] blocks)
 ├── domain.rs      HistoryEntry, Error enum, Delete/Restore/HistoryRepository traits, format_size, prune_stale_entries
