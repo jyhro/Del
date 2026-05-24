@@ -7,14 +7,15 @@ Single Rust binary crate (edition 2024). No workspace, no lib.rs, no integration
 ```
 src/
 ├── main.rs        Entrypoint, wiring, platform paths (#[cfg] blocks)
-├── domain.rs      HistoryEntry, Error enum, Delete/Restore traits, format_size, prune_stale_entries
+├── domain.rs      HistoryEntry, Error enum, Delete/Restore/HistoryRepository traits, format_size, prune_stale_entries
 ├── output.rs      All console output (println!/eprintln!/colored), confirm prompts
 ├── cli.rs         Arg parsing → Command enum, did-you-mean, print_usage
-├── trash.rs       TrashManager: file move I/O, history file I/O (no printing)
+├── history.rs     FileHistoryRepository: history file I/O, CSV parse/serialize
+├── trash.rs       TrashManager: file move I/O, depends on Box<dyn HistoryRepository>
 └── permanent.rs   PermanentDeleter: secure overwrite + delete logic (no printing)
 ```
 
-Architecture: **business logic never prints or reads stdin**. Modules return domain types (`DeleteOutcome`, `RestoreOutcome`, `Error`) and the output layer formats them.
+Architecture: **business logic never prints or reads stdin**. Modules return domain types (`DeleteOutcome`, `RestoreOutcome`, `Error`) and the output layer formats them. `TrashManager` depends on `Box<dyn HistoryRepository>` (DIP) — swap the repository to change storage format.
 
 ## Dev commands
 
@@ -38,7 +39,7 @@ No CI config, formatter config, or linter config committed.
 - **Permanent delete** (`-p`) uses XOR in-memory encryption + 2 random overwrite passes via `OsRng`. Zero-length files are removed without overwrite. Requires interactive `s/n` confirmation on stdin.
 - **`--clear-history`** also requires interactive `s/n` confirmation.
 - **Flag did-you-mean** — unknown flags with 3+ prefix-char matches get a suggestion; otherwise "Flag desconocido". Handled in `cli.rs`.
-- **Tests are inline** `#[cfg(test)] mod tests` blocks inside `cli.rs`, `domain.rs`, `trash.rs`, and `permanent.rs`. No separate test files.
+- **Tests are inline** `#[cfg(test)] mod tests` blocks inside `cli.rs`, `domain.rs`, `history.rs`, `trash.rs`, and `permanent.rs`. No separate test files.
 - **Test cleanup** — some tests create temp dirs via `std::env::temp_dir()` and attempt cleanup with `remove_dir_all` dropped inside `unwrap_or(())`; they can leave residue on failure.
 - **Console output and user interaction** are centralized in `output.rs`. To change how messages display, only modify that file.
 - **CLI parsing** returns a `Command` enum. To add a new subcommand, add a variant to `Command`, update `cli::parse_args`, and handle it in `main.rs`.
