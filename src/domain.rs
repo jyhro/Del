@@ -58,6 +58,13 @@ pub trait Restore {
     fn restore_by_index(&self, index: usize) -> Result<RestoreOutcome, Error>;
 }
 
+pub trait HistoryRepository {
+    fn read_all(&self) -> Result<Vec<HistoryEntry>, Error>;
+    fn append(&self, entry: &HistoryEntry) -> Result<(), Error>;
+    fn replace_all(&self, entries: &[HistoryEntry]) -> Result<(), Error>;
+    fn exists(&self) -> bool;
+}
+
 #[derive(Debug)]
 pub enum DeleteOutcome {
     Trash {
