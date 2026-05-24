@@ -42,6 +42,7 @@ fn main() {
 
     match command {
         Command::Help => {}
+        Command::Version => output::show_version(),
 
         Command::ShowHistory => {
             if !history_file.exists() {
