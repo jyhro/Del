@@ -1,7 +1,10 @@
+//! Parseo de argumentos y definicion de comandos.
+
 use std::path::PathBuf;
 
 use crate::output;
 
+/// Acciones disponibles desde la CLI.
 #[derive(Debug, PartialEq)]
 pub enum Command {
     Delete {
@@ -17,6 +20,7 @@ pub enum Command {
     Version,
 }
 
+/// Convierte los argumentos en un comando ejecutable.
 pub fn parse_args(args: &[String]) -> Command {
     if args.len() < 2 {
         output::print_usage();
@@ -101,6 +105,7 @@ pub fn parse_args(args: &[String]) -> Command {
     Command::Delete { files, permanent }
 }
 
+/// Sugiere flags conocidos si el prefijo coincide lo suficiente.
 fn suggest_flag(unknown: &str) -> Option<&'static str> {
     const KNOWN: &[&str] = &[
         "-p",
@@ -130,11 +135,7 @@ fn suggest_flag(unknown: &str) -> Option<&'static str> {
         }
     }
 
-    if best_score >= 3 {
-        best
-    } else {
-        None
-    }
+    if best_score >= 3 { best } else { None }
 }
 
 #[cfg(test)]
@@ -155,11 +156,7 @@ mod tests {
 
     #[test]
     fn test_parse_permanent_delete() {
-        let args = vec![
-            "del".to_string(),
-            "-p".to_string(),
-            "file.txt".to_string(),
-        ];
+        let args = vec!["del".to_string(), "-p".to_string(), "file.txt".to_string()];
         match parse_args(&args) {
             Command::Delete { files, permanent } => {
                 assert!(permanent);
@@ -219,11 +216,7 @@ mod tests {
 
     #[test]
     fn test_parse_multiple_files() {
-        let args = vec![
-            "del".to_string(),
-            "a.txt".to_string(),
-            "b.txt".to_string(),
-        ];
+        let args = vec!["del".to_string(), "a.txt".to_string(), "b.txt".to_string()];
         match parse_args(&args) {
             Command::Delete { files, .. } => assert_eq!(files.len(), 2),
             other => panic!("expected Command::Delete, got {:?}", other),

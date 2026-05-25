@@ -1,14 +1,18 @@
+//! Persistencia del historial en archivo delimitado por '|'.
+
 use std::fs;
 use std::io::{self, Write};
 use std::path::PathBuf;
 
 use crate::domain::{Error, HistoryEntry, HistoryRepository};
 
+/// Implementacion de historial basada en archivo de texto.
 pub struct FileHistoryRepository {
     pub history_file: PathBuf,
 }
 
 impl FileHistoryRepository {
+    /// Crea un repositorio de historial usando la ruta indicada.
     pub fn new(history_file: PathBuf) -> Self {
         FileHistoryRepository { history_file }
     }
@@ -66,11 +70,7 @@ impl HistoryRepository for FileHistoryRepository {
             writeln!(
                 file,
                 "{}|{}|{}|{}|{}",
-                entry.original_path,
-                entry.file_name,
-                entry.trash_path,
-                entry.timestamp,
-                entry.size
+                entry.original_path, entry.file_name, entry.trash_path, entry.timestamp, entry.size
             )?;
         }
         Ok(())

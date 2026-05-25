@@ -1,3 +1,5 @@
+//! Gestion de mover a trash y restaurar desde historial.
+
 use chrono::Local;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -5,16 +7,19 @@ use walkdir::WalkDir;
 
 use crate::domain::{Delete, DeleteOutcome, Error, HistoryEntry, HistoryRepository, Restore, RestoreOutcome};
 
+/// Orquesta el movimiento a trash y el historial asociado.
 pub struct TrashManager {
     pub trash_dir: PathBuf,
     pub history: Box<dyn HistoryRepository>,
 }
 
 impl TrashManager {
+    /// Crea un gestor de trash con su repositorio de historial.
     pub fn new(trash_dir: PathBuf, history: Box<dyn HistoryRepository>) -> Self {
         TrashManager { trash_dir, history }
     }
 
+    /// Lee el historial y elimina entradas obsoletas si es necesario.
     fn read_history(&self) -> (Vec<HistoryEntry>, usize) {
         let entries = match self.history.read_all() {
             Ok(e) => e,
@@ -35,6 +40,7 @@ impl TrashManager {
         }
     }
 
+    /// Devuelve historial y cantidad de entradas obsoletas eliminadas.
     pub fn list_history(&self) -> Result<(Vec<HistoryEntry>, usize), Error> {
         let (mut entries, pruned) = self.read_history();
         for entry in &mut entries {
@@ -45,6 +51,7 @@ impl TrashManager {
         Ok((entries, pruned))
     }
 
+    /// Vacía el historial si existe.
     pub fn clear_history(&self) -> Result<(), Error> {
         if !self.history.exists() {
             return Err(Error::NoHistory);
@@ -54,6 +61,7 @@ impl TrashManager {
     }
 }
 
+/// Calcula el tamano total de un archivo o carpeta.
 fn calculate_item_size(path: &Path) -> u64 {
     if path.is_dir() {
         WalkDir::new(path)

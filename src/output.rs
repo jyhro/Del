@@ -1,13 +1,17 @@
+//! Salida de consola y prompts interactivos.
+
 use colored::*;
 use std::io::{self, Write};
 use std::path::Path;
 
 use crate::domain::{self, DeleteOutcome, Error, RestoreOutcome};
 
+/// Imprime la version del binario.
 pub fn show_version() {
     println!("del v{}", env!("CARGO_PKG_VERSION"));
 }
 
+/// Imprime la ayuda de uso.
 pub fn print_usage() {
     println!("del - Eliminar archivos/carpetas de forma segura o permanente\n");
     println!("Uso:");
@@ -25,6 +29,7 @@ pub fn print_usage() {
     println!("  --help                  Muestra esta ayuda");
 }
 
+/// Muestra el resultado de una eliminacion.
 pub fn show_delete(outcome: &DeleteOutcome) {
     match outcome {
         DeleteOutcome::Trash {
@@ -47,6 +52,7 @@ pub fn show_delete(outcome: &DeleteOutcome) {
     }
 }
 
+/// Muestra el resultado de una restauracion.
 pub fn show_restore(outcome: &RestoreOutcome) {
     match outcome {
         RestoreOutcome::Restored { dest } => {
@@ -58,6 +64,7 @@ pub fn show_restore(outcome: &RestoreOutcome) {
     }
 }
 
+/// Imprime el historial formateado.
 pub fn show_history(entries: &[domain::HistoryEntry], pruned: usize) {
     if entries.is_empty() {
         if pruned > 0 {
@@ -100,18 +107,22 @@ pub fn show_history(entries: &[domain::HistoryEntry], pruned: usize) {
     }
 }
 
+/// Mensaje cuando no hay historial.
 pub fn show_no_history() {
     println!("No hay historial de eliminaciones");
 }
 
+/// Mensaje de historial eliminado.
 pub fn show_history_cleared() {
     println!("Historial eliminado");
 }
 
+/// Mensaje cuando no hay entradas para restaurar.
 pub fn show_no_archives() {
     println!("No hay archivos para restaurar");
 }
 
+/// Advertencia y prompt de confirmacion para borrado permanente.
 pub fn show_permanent_warning(path: impl AsRef<Path>) {
     println!("⚠️  Advertencia: Esta acción no se puede deshacer");
     print!(
@@ -121,12 +132,14 @@ pub fn show_permanent_warning(path: impl AsRef<Path>) {
     let _ = io::stdout().flush();
 }
 
+/// Advertencia y prompt de confirmacion para limpiar historial.
 pub fn show_clear_history_warning() {
     println!("⚠️  Se eliminará todo el historial de eliminaciones");
     print!("¿Está seguro? (s/n): ");
     let _ = io::stdout().flush();
 }
 
+/// Lee confirmacion por stdin (s/n).
 pub fn confirm() -> Result<bool, Error> {
     let mut input = String::new();
     io::stdin().read_line(&mut input)?;
@@ -137,14 +150,17 @@ pub fn confirm() -> Result<bool, Error> {
     Ok(confirm)
 }
 
+/// Imprime un error en stderr.
 pub fn error(msg: impl AsRef<str>) {
     eprintln!("{} {}", "✗".red(), msg.as_ref());
 }
 
+/// Imprime una advertencia en stderr.
 pub fn warn(msg: impl AsRef<str>) {
     eprintln!("⚠️  {}", msg.as_ref());
 }
 
+/// Error de flag desconocido con sugerencia.
 pub fn unknown_flag_with_suggestion(unknown: &str, suggestion: &str) {
     eprintln!(
         "{} Flag desconocido: '{}'. ¿Quizás quiso decir '{}'?",
@@ -154,6 +170,7 @@ pub fn unknown_flag_with_suggestion(unknown: &str, suggestion: &str) {
     );
 }
 
+/// Error de flag desconocido sin sugerencia.
 pub fn unknown_flag(flag: &str) {
     eprintln!("{} Flag desconocido: '{}'", "✗".red(), flag);
 }

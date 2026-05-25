@@ -1,3 +1,5 @@
+//! Punto de entrada y orquestacion de comandos.
+
 mod cli;
 mod domain;
 mod history;
@@ -14,6 +16,7 @@ use history::FileHistoryRepository;
 use permanent::PermanentDeleter;
 use trash::TrashManager;
 
+/// Devuelve las rutas base de trash e historial segun el sistema operativo.
 #[cfg(target_os = "windows")]
 fn get_trash_and_history() -> (PathBuf, PathBuf) {
     let userprofile = env::var("USERPROFILE").expect("No se pudo obtener USERPROFILE");
@@ -22,6 +25,7 @@ fn get_trash_and_history() -> (PathBuf, PathBuf) {
     (trash, history)
 }
 
+/// Devuelve las rutas base de trash e historial segun el sistema operativo.
 #[cfg(not(target_os = "windows"))]
 fn get_trash_and_history() -> (PathBuf, PathBuf) {
     let home = dirs::home_dir().expect("No se pudo obtener el directorio home");
@@ -30,11 +34,13 @@ fn get_trash_and_history() -> (PathBuf, PathBuf) {
     (trash, history)
 }
 
+/// Crea el gestor con el repositorio de historial por archivo.
 fn make_mgr(trash_dir: PathBuf, history_file: PathBuf) -> TrashManager {
     let repo = Box::new(FileHistoryRepository::new(history_file));
     TrashManager::new(trash_dir, repo)
 }
 
+/// Enruta el comando CLI al flujo correspondiente.
 fn main() {
     let (trash_dir, history_file) = get_trash_and_history();
     let args: Vec<String> = env::args().collect();

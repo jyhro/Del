@@ -1,3 +1,5 @@
+//! Borrado permanente con sobreescritura y encriptado en memoria.
+
 use rand::RngCore;
 use rand::rngs::OsRng;
 use std::fs;
@@ -7,14 +9,17 @@ use walkdir::WalkDir;
 
 use crate::domain::{Delete, DeleteOutcome, Error};
 
+/// Eliminador permanente de archivos y carpetas.
 pub struct PermanentDeleter;
 
 impl PermanentDeleter {
+    /// Crea un eliminador permanente.
     pub fn new() -> Self {
         PermanentDeleter
     }
 }
 
+/// Aplica XOR con bytes aleatorios al contenido en memoria.
 fn encrypt_in_memory(data: &mut [u8]) {
     let mut rng = OsRng;
     for byte in data.iter_mut() {
@@ -22,6 +27,7 @@ fn encrypt_in_memory(data: &mut [u8]) {
     }
 }
 
+/// Sobreescribe el archivo con datos aleatorios varias pasadas.
 fn overwrite_with_random(path: &Path, passes: usize) -> io::Result<()> {
     let len = fs::metadata(path)?.len() as usize;
     if len == 0 {
@@ -38,6 +44,7 @@ fn overwrite_with_random(path: &Path, passes: usize) -> io::Result<()> {
     Ok(())
 }
 
+/// Elimina un archivo con sobreescritura y limpieza final.
 fn secure_delete_file(path: &Path) -> io::Result<()> {
     let len = fs::metadata(path)?.len() as usize;
     if len == 0 {
@@ -60,6 +67,7 @@ fn secure_delete_file(path: &Path) -> io::Result<()> {
     Ok(())
 }
 
+/// Elimina una carpeta borrando sus archivos primero.
 fn secure_delete_dir(path: &Path) -> io::Result<()> {
     let files: Vec<_> = WalkDir::new(path)
         .into_iter()

@@ -1,7 +1,10 @@
+//! Tipos de dominio y utilidades compartidas.
+
 use std::fmt;
 use std::io;
 use std::path::{Path, PathBuf};
 
+/// Entrada persistida del historial de eliminaciones.
 #[derive(Clone, Debug)]
 pub struct HistoryEntry {
     pub original_path: String,
@@ -11,6 +14,7 @@ pub struct HistoryEntry {
     pub size: u64,
 }
 
+/// Errores de negocio y de IO expuestos por el dominio.
 #[derive(Debug)]
 pub enum Error {
     Io(io::Error),
@@ -48,15 +52,18 @@ impl From<io::Error> for Error {
 
 impl std::error::Error for Error {}
 
+/// Capacidad de eliminar un archivo o carpeta.
 pub trait Delete {
     fn delete(&self, path: &Path) -> Result<DeleteOutcome, Error>;
 }
 
+/// Capacidad de restaurar desde el historial.
 pub trait Restore {
     fn restore(&self) -> Result<RestoreOutcome, Error>;
     fn restore_by_index(&self, index: usize) -> Result<RestoreOutcome, Error>;
 }
 
+/// Abstraccion para persistir historial (DIP).
 #[allow(dead_code)]
 pub trait HistoryRepository {
     fn read_all(&self) -> Result<Vec<HistoryEntry>, Error>;
@@ -65,6 +72,7 @@ pub trait HistoryRepository {
     fn exists(&self) -> bool;
 }
 
+/// Resultado de una eliminacion.
 #[derive(Debug)]
 pub enum DeleteOutcome {
     Trash {
@@ -76,12 +84,14 @@ pub enum DeleteOutcome {
     },
 }
 
+/// Resultado de una restauracion.
 #[derive(Debug)]
 pub enum RestoreOutcome {
     Restored { dest: PathBuf },
     StaleEntryRemoved,
 }
 
+/// Formatea un tamano en unidades legibles.
 pub fn format_size(size: u64) -> String {
     if size >= 1_000_000_000 {
         format!("{:.1} GB", size as f64 / 1_000_000_000.0)
@@ -94,6 +104,7 @@ pub fn format_size(size: u64) -> String {
     }
 }
 
+/// Cuenta cuantas entradas del historial ya no existen en trash.
 pub fn prune_stale_entries(entries: &[HistoryEntry]) -> usize {
     let before = entries.len();
     let after = entries
