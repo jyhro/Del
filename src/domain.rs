@@ -77,9 +77,11 @@ pub trait HistoryRepository {
 pub enum DeleteOutcome {
     Trash {
         dest: PathBuf,
+        #[allow(dead_code)]
         history_warning: Option<String>,
     },
     Permanent {
+        #[allow(dead_code)]
         path: PathBuf,
     },
 }
@@ -89,6 +91,58 @@ pub enum DeleteOutcome {
 pub enum RestoreOutcome {
     Restored { dest: PathBuf },
     StaleEntryRemoved,
+}
+
+#[allow(dead_code)]
+/// Contador de resultados para el resumen final.
+pub struct Summary {
+    pub trash_count: usize,
+    pub permanent_count: usize,
+    pub restore_count: usize,
+    pub fail_count: usize,
+    pub cancel_count: usize,
+}
+
+#[allow(dead_code)]
+impl Summary {
+    pub fn new() -> Self {
+        Summary {
+            trash_count: 0,
+            permanent_count: 0,
+            restore_count: 0,
+            fail_count: 0,
+            cancel_count: 0,
+        }
+    }
+
+    pub fn record_delete(&mut self, outcome: &DeleteOutcome) {
+        match outcome {
+            DeleteOutcome::Trash { .. } => self.trash_count += 1,
+            DeleteOutcome::Permanent { .. } => self.permanent_count += 1,
+        }
+    }
+
+    pub fn record_restore(&mut self, outcome: &RestoreOutcome) {
+        if let RestoreOutcome::Restored { .. } = outcome {
+            self.restore_count += 1;
+        }
+    }
+
+    pub fn record_fail(&mut self) {
+        self.fail_count += 1;
+    }
+
+    pub fn record_cancel(&mut self) {
+        self.cancel_count += 1;
+    }
+
+    pub fn has_work(&self) -> bool {
+        self.trash_count > 0
+            || self.permanent_count > 0
+            || self.restore_count > 0
+            || self.fail_count > 0
+            || self.cancel_count > 0
+    }
 }
 
 /// Formatea un tamano en unidades legibles.
