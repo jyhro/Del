@@ -17,7 +17,7 @@
 
 ## Mejoras y funcionalidades
 
-- [ ] Mejoras de UX: mensajes mas claros y consistentes, y un resumen final con conteo de archivos movidos, restaurados o eliminados
+- [x] Mejoras de UX: mensajes mas claros y consistentes (rich_rust), resumen final con conteo, spinner durante operaciones por lote
 - [ ] Modo seco ("--dry-run") para simular acciones sin tocar archivos
 - [ ] Lista y busqueda avanzada del historial (filtro por fecha, nombre, extension, tamano)
 - [ ] Restauracion interactiva con selector por indice
@@ -28,7 +28,7 @@
 - [ ] Exportar/importar historial (CSV/JSON)
 - [ ] Estadisticas ("del stats"): cantidad de archivos, espacio ahorrado, tendencias por mes
 - [ ] Localizacion multi-idioma (manteniendo Espanol como default)
-- [ ] Logs detallados con niveles ("--verbose", "--quiet")
+- [ ] Logs detallados con niveles ("--verbose", "--quiet") — incluir barra de progreso animada con rich_rust Live + ProgressBar
 - [ ] Soporte de restauracion a carpeta diferente ("--restore-to")
 - [ ] Comando "undo" para revertir la ultima eliminacion
 - [ ] Mejoras de seguridad en borrado permanente (mas pasadas, patrones, verificacion opcional)
