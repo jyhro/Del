@@ -84,7 +84,7 @@ Valores por plataforma:
 
 - macOS: Papelera `~/.Trash` — Historial `~/.del_history`
 - Unix: Papelera `~/.local/share/Trash` — Historial `~/.local/share/del_history`
-- Windows: Papelera `%USERPROFILE%\AppData\Local\Temp\Trash` — Historial `%USERPROFILE%\AppData\Local\del_history`
+- Windows: Papelera `%USERPROFILE%\\AppData\\Local\\Temp\\Trash` — Historial `%USERPROFILE%\\AppData\\Local\\del_history`
 
 ### Borrado permanente (`-p`)
 
@@ -98,7 +98,7 @@ Los archivos de longitud cero se eliminan directamente sin sobrescritura. Los di
 
 ## Estructura del proyecto
 
-```
+```txt
 src/
 ├── main.rs        # Punto de entrada y wiring (Console + Summary lifecycle)
 ├── domain.rs      # Tipos de dominio, errores, contadores Summary
@@ -131,20 +131,17 @@ cargo test <nombre>   # ejecutar una sola prueba por nombre
 
 Las contribuciones son bienvenidas. Consulta las guías de contribución para flujo de trabajo y estilo:
 
-- [Guía de contribución (EN)](docs/en/CONTRIBUTING.md)
-- [Guía de contribución (ES)](docs/es/CONTRIBUTING.md)
+- [CONTRIBUTING](CONTRIBUTING.md)
 
 Cuando agregues funciones que cambien textos visibles por el usuario, ten en cuenta que este proyecto usa actualmente cadenas de UI en español en `output.rs`.
 
 ## Hoja de ruta e incidencias
 
-Consulta la documentación en [docs/README.md](docs/README.md) para guías, hoja de ruta e instrucciones para reportar issues.
-
-**Documentación:** [docs/README.md](docs/README.md)
+Consulta [ROADMAP.md](../ROADMAP.md) para mejoras planificadas. Reporta errores o solicitudes de característica mediante issues en GitHub.
 
 ## Licencia
 
-Este proyecto está bajo la licencia MIT — ver [LICENSE](LICENSE).
+Este proyecto está bajo la licencia MIT — ver [LICENSE](../LICENSE).
 
 ## Agradecimientos
 

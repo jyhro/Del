@@ -1,4 +1,4 @@
-# Roadmap (Proximas versiones)
+# Roadmap (Próximas versiones)
 
 ## Tareas implementadas
 
