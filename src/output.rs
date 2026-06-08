@@ -1,17 +1,13 @@
-//! Salida de consola y prompts interactivos.
-
-use colored::*;
+use rich_rust::prelude::*;
 use std::io::{self, Write};
 use std::path::Path;
 
-use crate::domain::{self, DeleteOutcome, Error, RestoreOutcome};
+use crate::domain::{self, Error};
 
-/// Imprime la version del binario.
-pub fn show_version() {
-    println!("del v{}", env!("CARGO_PKG_VERSION"));
+pub fn show_version(console: &Console) {
+    console.print(&format!("[bold]del[/] v{}", env!("CARGO_PKG_VERSION")));
 }
 
-/// Imprime la ayuda de uso.
 pub fn print_usage() {
     println!("del - Eliminar archivos/carpetas de forma segura o permanente\n");
     println!("Uso:");
@@ -29,52 +25,40 @@ pub fn print_usage() {
     println!("  --help                  Muestra esta ayuda");
 }
 
-/// Muestra el resultado de una eliminacion.
-pub fn show_delete(outcome: &DeleteOutcome) {
-    match outcome {
-        DeleteOutcome::Trash {
-            dest,
-            history_warning,
-            ..
-        } => {
-            println!("{} Movido a trash: {}", "✓".green(), dest.display());
-            if let Some(w) = history_warning {
-                eprintln!("{}", w);
-            }
-        }
-        DeleteOutcome::Permanent { path } => {
-            println!(
-                "{} Eliminado permanentemente: {}",
-                "✓".green(),
-                path.display()
-            );
-        }
-    }
+pub fn show_delete(console: &Console, dest: &Path) {
+    console.print(&format!(
+        "[bold green]✓[/] Movido a trash: {}",
+        dest.display()
+    ));
 }
 
-/// Muestra el resultado de una restauracion.
-pub fn show_restore(outcome: &RestoreOutcome) {
-    match outcome {
-        RestoreOutcome::Restored { dest } => {
-            println!("{} Restaurado en: {}", "✓".green(), dest.display());
-        }
-        RestoreOutcome::StaleEntryRemoved => {
-            warn("Entrada obsoleta eliminada del historial");
-        }
-    }
+pub fn show_restore(console: &Console, dest: &Path) {
+    console.print(&format!(
+        "[bold green]✓[/] Restaurado en: {}",
+        dest.display()
+    ));
 }
 
-/// Imprime el historial formateado.
-pub fn show_history(entries: &[domain::HistoryEntry], pruned: usize) {
+pub fn show_history(console: &Console, entries: &[domain::HistoryEntry], pruned: usize) {
     if entries.is_empty() {
         if pruned > 0 {
-            println!("No hay historial de eliminaciones (entradas obsoletas eliminadas)");
+            warn(
+                console,
+                "No hay historial de eliminaciones (entradas obsoletas eliminadas)",
+            );
         } else {
-            println!("No hay historial de eliminaciones");
+            show_no_history(console);
         }
         return;
     }
-    println!("\nHistorial de eliminaciones:");
+
+    let mut table = Table::new()
+        .title("Historial de eliminaciones")
+        .with_column(Column::new("#"))
+        .with_column(Column::new("Archivo"))
+        .with_column(Column::new("Fecha"))
+        .with_column(Column::new("Tamaño").justify(JustifyMethod::Right));
+
     for (i, entry) in entries.iter().enumerate() {
         let ts = &entry.timestamp;
         let formatted_ts = if ts.len() == 15 {
@@ -91,38 +75,37 @@ pub fn show_history(entries: &[domain::HistoryEntry], pruned: usize) {
             ts.clone()
         };
         let size_str = domain::format_size(entry.size);
-        println!(
-            " {}. {} | {} | {}",
-            (i + 1).to_string().cyan(),
-            entry.original_path.cyan(),
-            formatted_ts.cyan(),
-            size_str.cyan()
-        );
+        let idx_str = (i + 1).to_string();
+        table.add_row_cells([
+            idx_str.as_str(),
+            entry.original_path.as_str(),
+            formatted_ts.as_str(),
+            size_str.as_str(),
+        ]);
     }
+
+    console.print_renderable(&table);
+
     if pruned > 0 {
-        eprintln!(
-            "\n  ({} entradas obsoletas eliminadas del historial)",
-            pruned.to_string().yellow()
+        warn(
+            console,
+            &format!("{} entradas obsoletas eliminadas del historial", pruned),
         );
     }
 }
 
-/// Mensaje cuando no hay historial.
-pub fn show_no_history() {
-    println!("No hay historial de eliminaciones");
+pub fn show_no_history(console: &Console) {
+    console.print("[yellow]⚠[/] No hay historial de eliminaciones");
 }
 
-/// Mensaje de historial eliminado.
-pub fn show_history_cleared() {
-    println!("Historial eliminado");
+pub fn show_history_cleared(console: &Console) {
+    console.print("[bold green]✓[/] Historial eliminado");
 }
 
-/// Mensaje cuando no hay entradas para restaurar.
-pub fn show_no_archives() {
-    println!("No hay archivos para restaurar");
+pub fn show_no_archives(console: &Console) {
+    console.print("[yellow]⚠[/] No hay archivos para restaurar");
 }
 
-/// Advertencia y prompt de confirmacion para borrado permanente.
 pub fn show_permanent_warning(path: impl AsRef<Path>) {
     println!("⚠️  Advertencia: Esta acción no se puede deshacer");
     print!(
@@ -132,14 +115,12 @@ pub fn show_permanent_warning(path: impl AsRef<Path>) {
     let _ = io::stdout().flush();
 }
 
-/// Advertencia y prompt de confirmacion para limpiar historial.
 pub fn show_clear_history_warning() {
     println!("⚠️  Se eliminará todo el historial de eliminaciones");
     print!("¿Está seguro? (s/n): ");
     let _ = io::stdout().flush();
 }
 
-/// Lee confirmacion por stdin (s/n).
 pub fn confirm() -> Result<bool, Error> {
     let mut input = String::new();
     io::stdin().read_line(&mut input)?;
@@ -150,27 +131,54 @@ pub fn confirm() -> Result<bool, Error> {
     Ok(confirm)
 }
 
-/// Imprime un error en stderr.
-pub fn error(msg: impl AsRef<str>) {
-    eprintln!("{} {}", "✗".red(), msg.as_ref());
+pub fn error(console: &Console, msg: impl AsRef<str>) {
+    console.print(&format!("[bold red]✗[/] {}", msg.as_ref()));
 }
 
-/// Imprime una advertencia en stderr.
-pub fn warn(msg: impl AsRef<str>) {
-    eprintln!("⚠️  {}", msg.as_ref());
+pub fn warn(console: &Console, msg: impl AsRef<str>) {
+    console.print(&format!("[yellow]⚠[/] {}", msg.as_ref()));
 }
 
-/// Error de flag desconocido con sugerencia.
-pub fn unknown_flag_with_suggestion(unknown: &str, suggestion: &str) {
-    eprintln!(
-        "{} Flag desconocido: '{}'. ¿Quizás quiso decir '{}'?",
-        "✗".red(),
-        unknown,
-        suggestion
-    );
+pub fn unknown_flag_with_suggestion(console: &Console, unknown: &str, suggestion: &str) {
+    console.print(&format!(
+        "[bold red]✗[/] Flag desconocido: '{}'. ¿Quizás quiso decir '{}'?",
+        unknown, suggestion
+    ));
 }
 
-/// Error de flag desconocido sin sugerencia.
-pub fn unknown_flag(flag: &str) {
-    eprintln!("{} Flag desconocido: '{}'", "✗".red(), flag);
+pub fn unknown_flag(console: &Console, flag: &str) {
+    console.print(&format!(
+        "[bold red]✗[/] Flag desconocido: '{}'",
+        flag
+    ));
+}
+
+pub struct Spinner {
+    frames: [char; 4],
+    idx: usize,
+}
+
+impl Spinner {
+    pub fn new() -> Self {
+        Spinner {
+            frames: ['|', '/', '-', '\\'],
+            idx: 0,
+        }
+    }
+
+    pub fn tick(&mut self, current: usize, total: usize, path: &Path) {
+        let ch = self.frames[self.idx];
+        self.idx = (self.idx + 1) % self.frames.len();
+        eprint!("\r{} [{}/{}] {}", ch, current, total, path.display());
+        let _ = io::stderr().flush();
+    }
+
+    pub fn clear(&self) {
+        eprint!("\r{:w$}\r", "", w = 60);
+        let _ = io::stderr().flush();
+    }
+
+    pub fn finish(self) {
+        eprintln!();
+    }
 }
