@@ -1,5 +1,3 @@
-//! Punto de entrada y orquestacion de comandos.
-
 mod cli;
 mod domain;
 mod history;
@@ -14,9 +12,9 @@ use cli::Command;
 use domain::{Delete, Error, Restore};
 use history::FileHistoryRepository;
 use permanent::PermanentDeleter;
+use rich_rust::prelude::*;
 use trash::TrashManager;
 
-/// Devuelve las rutas base de trash e historial segun el sistema operativo.
 #[cfg(target_os = "windows")]
 fn get_trash_and_history() -> (PathBuf, PathBuf) {
     let userprofile = env::var("USERPROFILE").expect("No se pudo obtener USERPROFILE");
@@ -25,8 +23,15 @@ fn get_trash_and_history() -> (PathBuf, PathBuf) {
     (trash, history)
 }
 
-/// Devuelve las rutas base de trash e historial segun el sistema operativo.
-#[cfg(not(target_os = "windows"))]
+#[cfg(target_os = "macos")]
+fn get_trash_and_history() -> (PathBuf, PathBuf) {
+    let home = dirs::home_dir().expect("No se pudo obtener el directorio home");
+    let trash = home.join(".Trash");
+    let history = home.join(".del_history");
+    (trash, history)
+}
+
+#[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
 fn get_trash_and_history() -> (PathBuf, PathBuf) {
     let home = dirs::home_dir().expect("No se pudo obtener el directorio home");
     let trash = home.join(".local/share/Trash");
@@ -34,37 +39,36 @@ fn get_trash_and_history() -> (PathBuf, PathBuf) {
     (trash, history)
 }
 
-/// Crea el gestor con el repositorio de historial por archivo.
 fn make_mgr(trash_dir: PathBuf, history_file: PathBuf) -> TrashManager {
     let repo = Box::new(FileHistoryRepository::new(history_file));
     TrashManager::new(trash_dir, repo)
 }
 
-/// Enruta el comando CLI al flujo correspondiente.
 fn main() {
+    let console = Console::new();
     let (trash_dir, history_file) = get_trash_and_history();
     let args: Vec<String> = env::args().collect();
-    let command = cli::parse_args(&args);
+    let command = cli::parse_args(&console, &args);
 
     match command {
         Command::Help => {}
-        Command::Version => output::show_version(),
+        Command::Version => output::show_version(&console),
 
         Command::ShowHistory => {
             if !history_file.exists() {
-                output::show_no_history();
+                output::show_no_history(&console);
                 return;
             }
             let mgr = make_mgr(trash_dir, history_file);
             match mgr.list_history() {
-                Ok((entries, pruned)) => output::show_history(&entries, pruned),
-                Err(e) => output::error(e.to_string()),
+                Ok((entries, pruned)) => output::show_history(&console, &entries, pruned),
+                Err(e) => output::error(&console, e.to_string()),
             }
         }
 
         Command::ClearHistory => {
             if !history_file.exists() {
-                output::show_no_history();
+                output::show_no_history(&console);
                 return;
             }
             output::show_clear_history_warning();
@@ -72,12 +76,12 @@ fn main() {
                 Ok(true) => {
                     let mgr = make_mgr(trash_dir, history_file);
                     match mgr.clear_history() {
-                        Ok(()) => output::show_history_cleared(),
-                        Err(e) => output::error(e.to_string()),
+                        Ok(()) => output::show_history_cleared(&console),
+                        Err(e) => output::error(&console, e.to_string()),
                     }
                 }
                 Ok(false) => {}
-                Err(e) => output::error(e.to_string()),
+                Err(e) => output::error(&console, e.to_string()),
             }
         }
 
@@ -89,44 +93,98 @@ fn main() {
                 mgr.restore()
             };
             match result {
-                Ok(outcome) => output::show_restore(&outcome),
-                Err(Error::NoHistory) => output::show_no_archives(),
-                Err(e) => output::error(e.to_string()),
+                Ok(outcome) => match outcome {
+                    domain::RestoreOutcome::Restored { dest } => {
+                        output::show_restore(&console, &dest);
+                    }
+                    domain::RestoreOutcome::StaleEntryRemoved => {
+                        output::warn(&console, "Entrada obsoleta eliminada del historial");
+                    }
+                },
+                Err(Error::NoHistory) => output::show_no_archives(&console),
+                Err(e) => output::error(&console, e.to_string()),
             }
         }
 
         Command::Delete { files, permanent } => {
             let permanent_deleter = PermanentDeleter::new();
             let mgr = make_mgr(trash_dir, history_file);
-            for path in &files {
+            let show_spinner = !permanent && files.len() > 1;
+            let mut spinner = if show_spinner {
+                Some(output::Spinner::new())
+            } else {
+                None
+            };
+
+            for (i, path) in files.iter().enumerate() {
+                if let Some(ref mut s) = spinner {
+                    s.tick(i + 1, files.len(), path);
+                }
+
                 if !path.exists() {
-                    output::error(format!("'{}' no existe", path.display()));
+                    if let Some(ref s) = spinner {
+                        s.clear();
+                    }
+                    output::error(&console, format!("'{}' no existe", path.display()));
                     continue;
                 }
+
                 if permanent {
                     output::show_permanent_warning(path);
                     match output::confirm() {
                         Ok(true) => match permanent_deleter.delete(path) {
-                            Ok(outcome) => output::show_delete(&outcome),
-                            Err(e) => output::error(format!(
-                                "Error al eliminar '{}': {}",
-                                path.display(),
-                                e
-                            )),
+                            Ok(_) => {
+                                if let Some(ref s) = spinner {
+                                    s.clear();
+                                }
+                                console.print(&format!(
+                                    "[bold green]✓[/] Eliminado permanentemente: {}",
+                                    path.display()
+                                ));
+                            }
+                            Err(e) => {
+                                if let Some(ref s) = spinner {
+                                    s.clear();
+                                }
+                                output::error(
+                                    &console,
+                                    format!("Error al eliminar '{}': {}", path.display(), e),
+                                );
+                            }
                         },
                         Ok(false) => {}
-                        Err(e) => output::error(e.to_string()),
+                        Err(e) => {
+                            if let Some(ref s) = spinner {
+                                s.clear();
+                            }
+                            output::error(&console, e.to_string());
+                        }
                     }
                 } else {
                     match mgr.delete(path) {
-                        Ok(outcome) => output::show_delete(&outcome),
-                        Err(e) => output::error(format!(
-                            "Error al mover a trash '{}': {}",
-                            path.display(),
-                            e
-                        )),
+                        Ok(outcome) => {
+                            if let Some(ref s) = spinner {
+                                s.clear();
+                            }
+                            if let domain::DeleteOutcome::Trash { dest, .. } = &outcome {
+                                output::show_delete(&console, dest);
+                            }
+                        }
+                        Err(e) => {
+                            if let Some(ref s) = spinner {
+                                s.clear();
+                            }
+                            output::error(
+                                &console,
+                                format!("Error al mover a trash '{}': {}", path.display(), e),
+                            );
+                        }
                     }
                 }
+            }
+
+            if let Some(s) = spinner {
+                s.finish();
             }
         }
     }
