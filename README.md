@@ -8,6 +8,8 @@ A safe file deletion utility for Unix/macOS and Windows.
 - **Restore**: Restore files from trash by index or restore the last deleted file
 - **History**: Track deletion history with timestamps and file sizes
 - **Permanent deletion**: Secure overwrite + deletion that cannot be recovered
+- **Rich terminal output**: Colored icons, tables, and summary panels via `rich_rust`
+- **Spinner animation**: Visual feedback during batch operations
 - **Cross-platform**: Works on Unix/Linux, macOS, and Windows
 
 ## Usage
@@ -88,15 +90,15 @@ Zero-length files are removed directly without overwrite. Directories are walked
 
 ```txt
 src/
-├── main.rs        Entrypoint, wiring, platform paths
-├── domain.rs      Domain types, traits, Error enum
-├── output.rs      Console output, confirm prompts
+├── main.rs        Entrypoint, wiring, platform paths, Console + Summary lifecycle
+├── domain.rs      Domain types, traits, Error enum, Summary counter
+├── output.rs      Rich terminal output (rich_rust), confirm prompts, spinner
 ├── cli.rs         CLI arg parsing → Command enum
 ├── trash.rs       Trash move/restore + history I/O
 └── permanent.rs   Secure overwrite + delete logic
 ```
 
-Business logic never prints or reads stdin. Modules return domain types and the output layer handles display.
+Business logic never prints or reads stdin. Modules return domain types and the output layer handles display. All styled output uses `rich_rust` with a shared `Console` created in `main.rs`.
 
 ## Development
 
