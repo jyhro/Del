@@ -4,7 +4,7 @@ Un CLI pequeño y multiplataforma para eliminar archivos de forma más segura en
 
 Objetivos principales: mover archivos a una papelera local, llevar un historial para restauraciones sencillas y ofrecer una opción de borrado permanente y seguro.
 
-**Puntos destacados**
+## Puntos destacados
 
 - Papelera local en vez de borrado inmediato e irreversible
 - Restaurar por índice de historial o restaurar la eliminación más reciente

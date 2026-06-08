@@ -4,7 +4,7 @@ A small, cross-platform CLI for safer file deletion on Unix/macOS and Windows.
 
 Core goals: move files to a trash folder, track history for easy restores, and provide an optional secure permanent delete.
 
-**Highlights**
+## Highlights
 
 - Safe local trash instead of immediate permanent deletion
 - Restore by history index or restore the most recent deletion
