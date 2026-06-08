@@ -6,9 +6,9 @@ Single Rust binary crate (edition 2024). No workspace, no lib.rs, no integration
 
 ```txt
 src/
-├── main.rs        Entrypoint, wiring, platform paths (#[cfg] blocks)
-├── domain.rs      HistoryEntry, Error enum, Delete/Restore/HistoryRepository traits, format_size, prune_stale_entries
-├── output.rs      All console output (println!/eprintln!/colored), confirm prompts
+├── main.rs        Entrypoint, wiring, platform paths (#[cfg] blocks), Console + Summary lifecycle
+├── domain.rs      HistoryEntry, Error enum, Delete/Restore/HistoryRepository traits, Summary, format_size, prune_stale_entries
+├── output.rs      All console output via rich_rust (Console, markup, Table, Panel, Spinner), confirm prompts
 ├── cli.rs         Arg parsing → Command enum, did-you-mean, print_usage
 ├── history.rs     FileHistoryRepository: history file I/O, CSV parse/serialize
 ├── trash.rs       TrashManager: file move I/O, depends on Box<dyn HistoryRepository>
@@ -43,3 +43,21 @@ No CI config, formatter config, or linter config committed.
 - **Test cleanup** — some tests create temp dirs via `std::env::temp_dir()` and attempt cleanup with `remove_dir_all` dropped inside `unwrap_or(())`; they can leave residue on failure.
 - **Console output and user interaction** are centralized in `output.rs`. To change how messages display, only modify that file.
 - **CLI parsing** returns a `Command` enum. To add a new subcommand, add a variant to `Command`, update `cli::parse_args`, and handle it in `main.rs`.
+
+## rich_rust integration
+
+All styled output uses `rich_rust::prelude::*`. Key types:
+- **`Console`** — created once in `main.rs`, passed as `&Console` to every output function. Uses markup syntax: `[bold green]✓[/]`, `[bold red]✗[/]`, `[yellow]⚠[/]`.
+- **`Table`** — used in `show_history()` for the history display with columns.
+- **`Panel`** — used in `show_summary()` for the final summary box.
+- **`Spinner`** — simple struct with `tick()`/`finish()` for batch operation feedback (not from rich_rust, defined in `output.rs`).
+
+The `Console` parameter is threaded through `cli::parse_args` too (for error/warning output during arg parsing). Tests create a throwaway `Console::new()`.
+
+## Summary tracking
+
+`domain::Summary` tracks counts across batch operations. Created in `main.rs`, passed through operation loops, and displayed via `output::show_summary()` at the end. Fields: `trash_count`, `permanent_count`, `restore_count`, `fail_count`, `cancel_count`. Methods: `record_delete`, `record_restore`, `record_fail`, `record_cancel`, `has_work`.
+
+## Spinner usage
+
+For batch normal deletes (≥2 files in one command), a `Spinner` shows a rotating `|/-\` cursor with progress `[current/total] filename`. The spinner line is overwritten on each tick via `\r`. After the loop, `finish()` advances to a new line. Permanent deletes skip the spinner (per-file confirmation makes it impractical).
