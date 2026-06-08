@@ -3,6 +3,7 @@
 use std::path::PathBuf;
 
 use crate::output;
+use rich_rust::prelude::*;
 
 /// Acciones disponibles desde la CLI.
 #[derive(Debug, PartialEq)]
@@ -21,7 +22,7 @@ pub enum Command {
 }
 
 /// Convierte los argumentos en un comando ejecutable.
-pub fn parse_args(args: &[String]) -> Command {
+pub fn parse_args(console: &Console, args: &[String]) -> Command {
     if args.len() < 2 {
         output::print_usage();
         return Command::Help;
@@ -49,10 +50,13 @@ pub fn parse_args(args: &[String]) -> Command {
                         }
                         i += 1;
                     } else if !args[i + 1].starts_with('-') {
-                        output::warn(format!(
-                            "'{}' no es un índice válido, se restaurará el último",
-                            args[i + 1]
-                        ));
+                        output::warn(
+                            console,
+                            format!(
+                                "'{}' no es un índice válido, se restaurará el último",
+                                args[i + 1]
+                            ),
+                        );
                         i += 1;
                     }
                 }
@@ -64,9 +68,9 @@ pub fn parse_args(args: &[String]) -> Command {
             arg if !arg.starts_with('-') => files.push(PathBuf::from(arg.to_string())),
             arg => {
                 if let Some(s) = suggest_flag(arg) {
-                    output::unknown_flag_with_suggestion(arg, s);
+                    output::unknown_flag_with_suggestion(console, arg, s);
                 } else {
-                    output::unknown_flag(arg);
+                    output::unknown_flag(console, arg);
                 }
             }
         }
@@ -97,7 +101,7 @@ pub fn parse_args(args: &[String]) -> Command {
     }
 
     if files.is_empty() {
-        output::error("Debe especificar al menos un archivo o carpeta");
+        output::error(console, "Debe especificar al menos un archivo o carpeta");
         output::print_usage();
         return Command::Help;
     }
@@ -144,8 +148,9 @@ mod tests {
 
     #[test]
     fn test_parse_delete_single_file() {
+        let console = Console::new();
         let args = vec!["del".to_string(), "file.txt".to_string()];
-        match parse_args(&args) {
+        match parse_args(&console, &args) {
             Command::Delete { files, permanent } => {
                 assert_eq!(files, vec![PathBuf::from("file.txt")]);
                 assert!(!permanent);
@@ -156,8 +161,9 @@ mod tests {
 
     #[test]
     fn test_parse_permanent_delete() {
+        let console = Console::new();
         let args = vec!["del".to_string(), "-p".to_string(), "file.txt".to_string()];
-        match parse_args(&args) {
+        match parse_args(&console, &args) {
             Command::Delete { files, permanent } => {
                 assert!(permanent);
                 assert_eq!(files.len(), 1);
@@ -168,8 +174,9 @@ mod tests {
 
     #[test]
     fn test_parse_restore_no_index() {
+        let console = Console::new();
         let args = vec!["del".to_string(), "-r".to_string()];
-        match parse_args(&args) {
+        match parse_args(&console, &args) {
             Command::Restore { index } => assert_eq!(index, None),
             other => panic!("expected Command::Restore, got {:?}", other),
         }
@@ -177,8 +184,9 @@ mod tests {
 
     #[test]
     fn test_parse_restore_with_index() {
+        let console = Console::new();
         let args = vec!["del".to_string(), "-r".to_string(), "3".to_string()];
-        match parse_args(&args) {
+        match parse_args(&console, &args) {
             Command::Restore { index } => assert_eq!(index, Some(2)),
             other => panic!("expected Command::Restore, got {:?}", other),
         }
@@ -186,38 +194,44 @@ mod tests {
 
     #[test]
     fn test_parse_show_history() {
+        let console = Console::new();
         let args = vec!["del".to_string(), "--history".to_string()];
-        assert_eq!(parse_args(&args), Command::ShowHistory);
+        assert_eq!(parse_args(&console, &args), Command::ShowHistory);
     }
 
     #[test]
     fn test_parse_clear_history() {
+        let console = Console::new();
         let args = vec!["del".to_string(), "--clear-history".to_string()];
-        assert_eq!(parse_args(&args), Command::ClearHistory);
+        assert_eq!(parse_args(&console, &args), Command::ClearHistory);
     }
 
     #[test]
     fn test_parse_help() {
+        let console = Console::new();
         let args = vec!["del".to_string(), "--help".to_string()];
-        assert_eq!(parse_args(&args), Command::Help);
+        assert_eq!(parse_args(&console, &args), Command::Help);
     }
 
     #[test]
     fn test_parse_version() {
+        let console = Console::new();
         let args = vec!["del".to_string(), "--version".to_string()];
-        assert_eq!(parse_args(&args), Command::Version);
+        assert_eq!(parse_args(&console, &args), Command::Version);
     }
 
     #[test]
     fn test_parse_version_short() {
+        let console = Console::new();
         let args = vec!["del".to_string(), "-v".to_string()];
-        assert_eq!(parse_args(&args), Command::Version);
+        assert_eq!(parse_args(&console, &args), Command::Version);
     }
 
     #[test]
     fn test_parse_multiple_files() {
+        let console = Console::new();
         let args = vec!["del".to_string(), "a.txt".to_string(), "b.txt".to_string()];
-        match parse_args(&args) {
+        match parse_args(&console, &args) {
             Command::Delete { files, .. } => assert_eq!(files.len(), 2),
             other => panic!("expected Command::Delete, got {:?}", other),
         }
