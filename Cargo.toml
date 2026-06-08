@@ -1,7 +1,7 @@
 [package]
 name = "del"
 version = "0.2.8"
-edition = "2024"
+edition = "2026"
 description = "A safe file deletion utility with trash support, restore history, and permanent deletion"
 license = "MIT"
 repository = "https://github.com/jyhro/Del.git"
