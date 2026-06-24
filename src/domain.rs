@@ -64,7 +64,6 @@ pub trait Restore {
 }
 
 /// Abstraccion para persistir historial (DIP).
-#[allow(dead_code)]
 pub trait HistoryRepository {
     fn read_all(&self) -> Result<Vec<HistoryEntry>, Error>;
     fn append(&self, entry: &HistoryEntry) -> Result<(), Error>;
@@ -77,13 +76,18 @@ pub trait HistoryRepository {
 pub enum DeleteOutcome {
     Trash {
         dest: PathBuf,
-        #[allow(dead_code)]
         history_warning: Option<String>,
     },
     Permanent {
-        #[allow(dead_code)]
         path: PathBuf,
     },
+}
+
+/// Resultado previsto de una eliminacion en modo simulacion.
+#[derive(Debug)]
+pub enum DeletePreview {
+    Trash { source: PathBuf, dest: PathBuf },
+    Permanent { path: PathBuf },
 }
 
 /// Resultado de una restauracion.
@@ -93,7 +97,13 @@ pub enum RestoreOutcome {
     StaleEntryRemoved,
 }
 
-#[allow(dead_code)]
+/// Resultado previsto de una restauracion en modo simulacion.
+#[derive(Debug)]
+pub struct RestorePreview {
+    pub source: PathBuf,
+    pub dest: PathBuf,
+}
+
 /// Contador de resultados para el resumen final.
 pub struct Summary {
     pub trash_count: usize,
@@ -101,9 +111,9 @@ pub struct Summary {
     pub restore_count: usize,
     pub fail_count: usize,
     pub cancel_count: usize,
+    pub dry_run_count: usize,
 }
 
-#[allow(dead_code)]
 impl Summary {
     pub fn new() -> Self {
         Summary {
@@ -112,6 +122,7 @@ impl Summary {
             restore_count: 0,
             fail_count: 0,
             cancel_count: 0,
+            dry_run_count: 0,
         }
     }
 
@@ -136,12 +147,17 @@ impl Summary {
         self.cancel_count += 1;
     }
 
+    pub fn record_dry_run(&mut self) {
+        self.dry_run_count += 1;
+    }
+
     pub fn has_work(&self) -> bool {
         self.trash_count > 0
             || self.permanent_count > 0
             || self.restore_count > 0
             || self.fail_count > 0
             || self.cancel_count > 0
+            || self.dry_run_count > 0
     }
 }
 
@@ -248,6 +264,17 @@ mod tests {
         let io_err = io::Error::new(io::ErrorKind::NotFound, "file not found");
         let err: Error = io_err.into();
         assert!(matches!(err, Error::Io(_)));
+    }
+
+    #[test]
+    fn test_summary_records_dry_run() {
+        let mut summary = Summary::new();
+        assert!(!summary.has_work());
+
+        summary.record_dry_run();
+
+        assert_eq!(summary.dry_run_count, 1);
+        assert!(summary.has_work());
     }
 
     #[test]

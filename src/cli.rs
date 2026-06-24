@@ -11,12 +11,18 @@ pub enum Command {
     Delete {
         files: Vec<PathBuf>,
         permanent: bool,
+        dry_run: bool,
     },
     Restore {
         index: Option<usize>,
+        dry_run: bool,
     },
-    ShowHistory,
-    ClearHistory,
+    ShowHistory {
+        dry_run: bool,
+    },
+    ClearHistory {
+        dry_run: bool,
+    },
     Help,
     Version,
 }
@@ -33,6 +39,7 @@ pub fn parse_args(console: &Console, args: &[String]) -> Command {
     let mut restore_index: Option<usize> = None;
     let mut show_history = false;
     let mut clear_history = false;
+    let mut dry_run = false;
     let mut help = false;
     let mut version = false;
     let mut files: Vec<PathBuf> = Vec::new();
@@ -63,6 +70,7 @@ pub fn parse_args(console: &Console, args: &[String]) -> Command {
             }
             "--history" => show_history = true,
             "--clear-history" => clear_history = true,
+            "--dry-run" => dry_run = true,
             "--version" | "-v" => version = true,
             "--help" | "-h" => help = true,
             arg if !arg.starts_with('-') => files.push(PathBuf::from(arg.to_string())),
@@ -87,16 +95,17 @@ pub fn parse_args(console: &Console, args: &[String]) -> Command {
     }
 
     if show_history {
-        return Command::ShowHistory;
+        return Command::ShowHistory { dry_run };
     }
 
     if clear_history {
-        return Command::ClearHistory;
+        return Command::ClearHistory { dry_run };
     }
 
     if restore {
         return Command::Restore {
             index: restore_index,
+            dry_run,
         };
     }
 
@@ -106,7 +115,11 @@ pub fn parse_args(console: &Console, args: &[String]) -> Command {
         return Command::Help;
     }
 
-    Command::Delete { files, permanent }
+    Command::Delete {
+        files,
+        permanent,
+        dry_run,
+    }
 }
 
 /// Sugiere flags conocidos si el prefijo coincide lo suficiente.
@@ -118,6 +131,7 @@ fn suggest_flag(unknown: &str) -> Option<&'static str> {
         "--restore",
         "--history",
         "--clear-history",
+        "--dry-run",
         "--help",
         "-h",
         "--version",
@@ -151,9 +165,14 @@ mod tests {
         let console = Console::new();
         let args = vec!["del".to_string(), "file.txt".to_string()];
         match parse_args(&console, &args) {
-            Command::Delete { files, permanent } => {
+            Command::Delete {
+                files,
+                permanent,
+                dry_run,
+            } => {
                 assert_eq!(files, vec![PathBuf::from("file.txt")]);
                 assert!(!permanent);
+                assert!(!dry_run);
             }
             other => panic!("expected Command::Delete, got {:?}", other),
         }
@@ -164,7 +183,9 @@ mod tests {
         let console = Console::new();
         let args = vec!["del".to_string(), "-p".to_string(), "file.txt".to_string()];
         match parse_args(&console, &args) {
-            Command::Delete { files, permanent } => {
+            Command::Delete {
+                files, permanent, ..
+            } => {
                 assert!(permanent);
                 assert_eq!(files.len(), 1);
             }
@@ -177,7 +198,10 @@ mod tests {
         let console = Console::new();
         let args = vec!["del".to_string(), "-r".to_string()];
         match parse_args(&console, &args) {
-            Command::Restore { index } => assert_eq!(index, None),
+            Command::Restore { index, dry_run } => {
+                assert_eq!(index, None);
+                assert!(!dry_run);
+            }
             other => panic!("expected Command::Restore, got {:?}", other),
         }
     }
@@ -187,7 +211,7 @@ mod tests {
         let console = Console::new();
         let args = vec!["del".to_string(), "-r".to_string(), "3".to_string()];
         match parse_args(&console, &args) {
-            Command::Restore { index } => assert_eq!(index, Some(2)),
+            Command::Restore { index, .. } => assert_eq!(index, Some(2)),
             other => panic!("expected Command::Restore, got {:?}", other),
         }
     }
@@ -196,14 +220,20 @@ mod tests {
     fn test_parse_show_history() {
         let console = Console::new();
         let args = vec!["del".to_string(), "--history".to_string()];
-        assert_eq!(parse_args(&console, &args), Command::ShowHistory);
+        assert_eq!(
+            parse_args(&console, &args),
+            Command::ShowHistory { dry_run: false }
+        );
     }
 
     #[test]
     fn test_parse_clear_history() {
         let console = Console::new();
         let args = vec!["del".to_string(), "--clear-history".to_string()];
-        assert_eq!(parse_args(&console, &args), Command::ClearHistory);
+        assert_eq!(
+            parse_args(&console, &args),
+            Command::ClearHistory { dry_run: false }
+        );
     }
 
     #[test]
@@ -238,6 +268,44 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_dry_run_delete() {
+        let console = Console::new();
+        let args = vec![
+            "del".to_string(),
+            "--dry-run".to_string(),
+            "file.txt".to_string(),
+        ];
+        match parse_args(&console, &args) {
+            Command::Delete { dry_run, .. } => assert!(dry_run),
+            other => panic!("expected Command::Delete, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_parse_dry_run_restore() {
+        let console = Console::new();
+        let args = vec!["del".to_string(), "--dry-run".to_string(), "-r".to_string()];
+        match parse_args(&console, &args) {
+            Command::Restore { dry_run, .. } => assert!(dry_run),
+            other => panic!("expected Command::Restore, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_parse_dry_run_clear_history() {
+        let console = Console::new();
+        let args = vec![
+            "del".to_string(),
+            "--dry-run".to_string(),
+            "--clear-history".to_string(),
+        ];
+        assert_eq!(
+            parse_args(&console, &args),
+            Command::ClearHistory { dry_run: true }
+        );
+    }
+
+    #[test]
     fn test_suggest_flag_exact_match() {
         assert_eq!(suggest_flag("--permanent"), Some("--permanent"));
     }
@@ -245,6 +313,11 @@ mod tests {
     #[test]
     fn test_suggest_flag_prefix() {
         assert_eq!(suggest_flag("--perm"), Some("--permanent"));
+    }
+
+    #[test]
+    fn test_suggest_flag_dry_run() {
+        assert_eq!(suggest_flag("--dry"), Some("--dry-run"));
     }
 
     #[test]

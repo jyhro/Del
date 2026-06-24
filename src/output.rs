@@ -1,8 +1,9 @@
+use rich_rust::markup;
 use rich_rust::prelude::*;
 use std::io::{self, Write};
 use std::path::Path;
 
-use crate::domain::{self, Error};
+use crate::domain::{self, Error, Summary};
 
 pub fn show_version(console: &Console) {
     console.print(&format!("[bold]del[/] v{}", env!("CARGO_PKG_VERSION")));
@@ -16,11 +17,13 @@ pub fn print_usage() {
     println!("  del -r, --restore [N]                   Restaurar último o por índice");
     println!("  del --history                           Mostrar historial de eliminaciones");
     println!("  del --clear-history                     Limpiar historial");
+    println!("  del --dry-run [opciones] <archivo>      Simular sin modificar archivos");
     println!("\nOpciones:");
     println!("  -p, --permanent         Elimina permanentemente con confirmación");
     println!("  -r, --restore [N]       Restaurar archivo/carpeta (último o por índice N)");
     println!("  --history               Mostrar historial de eliminaciones");
     println!("  --clear-history         Limpiar historial de eliminaciones");
+    println!("  --dry-run               Simula la acción sin mover, eliminar ni restaurar");
     println!("  -v, --version           Muestra la versión");
     println!("  --help                  Muestra esta ayuda");
 }
@@ -39,13 +42,62 @@ pub fn show_restore(console: &Console, dest: &Path) {
     ));
 }
 
-pub fn show_history(console: &Console, entries: &[domain::HistoryEntry], pruned: usize) {
+pub fn show_permanent_delete(console: &Console, path: &Path) {
+    console.print(&format!(
+        "[bold green]✓[/] Eliminado permanentemente: {}",
+        path.display()
+    ));
+}
+
+pub fn show_dry_run_delete(console: &Console, source: &Path, dest: &Path) {
+    console.print(&format!(
+        "[bold cyan]Simulación[/] Se movería a trash: {} -> {}",
+        source.display(),
+        dest.display()
+    ));
+}
+
+pub fn show_dry_run_permanent(console: &Console, path: &Path) {
+    console.print(&format!(
+        "[bold cyan]Simulación[/] Se eliminaría permanentemente: {}",
+        path.display()
+    ));
+}
+
+pub fn show_dry_run_restore(console: &Console, source: &Path, dest: &Path) {
+    console.print(&format!(
+        "[bold cyan]Simulación[/] Se restauraría: {} -> {}",
+        source.display(),
+        dest.display()
+    ));
+}
+
+pub fn show_dry_run_clear_history(console: &Console, count: usize) {
+    console.print(&format!(
+        "[bold cyan]Simulación[/] Se limpiarían {} entradas del historial",
+        count
+    ));
+}
+
+pub fn show_history(
+    console: &Console,
+    entries: &[domain::HistoryEntry],
+    pruned: usize,
+    dry_run: bool,
+) {
     if entries.is_empty() {
         if pruned > 0 {
-            warn(
-                console,
-                "No hay historial de eliminaciones (entradas obsoletas eliminadas)",
-            );
+            if dry_run {
+                warn(
+                    console,
+                    "No hay historial activo (entradas obsoletas detectadas; no se modificó el historial)",
+                );
+            } else {
+                warn(
+                    console,
+                    "No hay historial de eliminaciones (entradas obsoletas eliminadas)",
+                );
+            }
         } else {
             show_no_history(console);
         }
@@ -87,10 +139,20 @@ pub fn show_history(console: &Console, entries: &[domain::HistoryEntry], pruned:
     console.print_renderable(&table);
 
     if pruned > 0 {
-        warn(
-            console,
-            &format!("{} entradas obsoletas eliminadas del historial", pruned),
-        );
+        if dry_run {
+            warn(
+                console,
+                &format!(
+                    "{} entradas obsoletas detectadas (no eliminadas por --dry-run)",
+                    pruned
+                ),
+            );
+        } else {
+            warn(
+                console,
+                &format!("{} entradas obsoletas eliminadas del historial", pruned),
+            );
+        }
     }
 }
 
@@ -100,6 +162,50 @@ pub fn show_no_history(console: &Console) {
 
 pub fn show_history_cleared(console: &Console) {
     console.print("[bold green]✓[/] Historial eliminado");
+}
+
+pub fn show_summary(console: &Console, summary: &Summary) {
+    if !summary.has_work() {
+        return;
+    }
+
+    let mut lines: Vec<String> = Vec::new();
+
+    if summary.trash_count > 0 {
+        lines.push(format!(
+            "[bold green]✓[/] Movidos a trash: {}",
+            summary.trash_count
+        ));
+    }
+    if summary.permanent_count > 0 {
+        lines.push(format!(
+            "[bold red]✗[/] Eliminados permanentemente: {}",
+            summary.permanent_count
+        ));
+    }
+    if summary.restore_count > 0 {
+        lines.push(format!(
+            "[bold green]✓[/] Restaurados: {}",
+            summary.restore_count
+        ));
+    }
+    if summary.fail_count > 0 {
+        lines.push(format!("[bold red]✗[/] Fallos: {}", summary.fail_count));
+    }
+    if summary.cancel_count > 0 {
+        lines.push(format!("[yellow]⚠[/] Cancelados: {}", summary.cancel_count));
+    }
+    if summary.dry_run_count > 0 {
+        lines.push(format!(
+            "[bold cyan]Simulación[/] Acciones simuladas: {}",
+            summary.dry_run_count
+        ));
+    }
+
+    let content = lines.join("\n");
+    let rich_content = markup::render_or_plain(&content);
+    let panel = Panel::from_rich_text(&rich_content, usize::MAX).title("Resumen");
+    console.print_renderable(&panel);
 }
 
 pub fn show_no_archives(console: &Console) {
@@ -147,10 +253,7 @@ pub fn unknown_flag_with_suggestion(console: &Console, unknown: &str, suggestion
 }
 
 pub fn unknown_flag(console: &Console, flag: &str) {
-    console.print(&format!(
-        "[bold red]✗[/] Flag desconocido: '{}'",
-        flag
-    ));
+    console.print(&format!("[bold red]✗[/] Flag desconocido: '{}'", flag));
 }
 
 pub struct Spinner {
