@@ -11,12 +11,15 @@ pub enum Command {
     Delete {
         files: Vec<PathBuf>,
         permanent: bool,
+        force: bool,
     },
     Restore {
         index: Option<usize>,
     },
     ShowHistory,
-    ClearHistory,
+    ClearHistory {
+        force: bool,
+    },
     Help,
     Version,
 }
@@ -33,6 +36,7 @@ pub fn parse_args(console: &Console, args: &[String]) -> Command {
     let mut restore_index: Option<usize> = None;
     let mut show_history = false;
     let mut clear_history = false;
+    let mut force = false;
     let mut help = false;
     let mut version = false;
     let mut files: Vec<PathBuf> = Vec::new();
@@ -63,6 +67,7 @@ pub fn parse_args(console: &Console, args: &[String]) -> Command {
             }
             "--history" => show_history = true,
             "--clear-history" => clear_history = true,
+            "--force" => force = true,
             "--version" | "-v" => version = true,
             "--help" | "-h" => help = true,
             arg if !arg.starts_with('-') => files.push(PathBuf::from(arg.to_string())),
@@ -91,7 +96,7 @@ pub fn parse_args(console: &Console, args: &[String]) -> Command {
     }
 
     if clear_history {
-        return Command::ClearHistory;
+        return Command::ClearHistory { force };
     }
 
     if restore {
@@ -106,7 +111,11 @@ pub fn parse_args(console: &Console, args: &[String]) -> Command {
         return Command::Help;
     }
 
-    Command::Delete { files, permanent }
+    Command::Delete {
+        files,
+        permanent,
+        force,
+    }
 }
 
 /// Sugiere flags conocidos si el prefijo coincide lo suficiente.
@@ -118,6 +127,7 @@ fn suggest_flag(unknown: &str) -> Option<&'static str> {
         "--restore",
         "--history",
         "--clear-history",
+        "--force",
         "--help",
         "-h",
         "--version",
@@ -151,9 +161,14 @@ mod tests {
         let console = Console::new();
         let args = vec!["del".to_string(), "file.txt".to_string()];
         match parse_args(&console, &args) {
-            Command::Delete { files, permanent } => {
+            Command::Delete {
+                files,
+                permanent,
+                force,
+            } => {
                 assert_eq!(files, vec![PathBuf::from("file.txt")]);
                 assert!(!permanent);
+                assert!(!force);
             }
             other => panic!("expected Command::Delete, got {:?}", other),
         }
@@ -164,7 +179,9 @@ mod tests {
         let console = Console::new();
         let args = vec!["del".to_string(), "-p".to_string(), "file.txt".to_string()];
         match parse_args(&console, &args) {
-            Command::Delete { files, permanent } => {
+            Command::Delete {
+                files, permanent, ..
+            } => {
                 assert!(permanent);
                 assert_eq!(files.len(), 1);
             }
@@ -203,7 +220,46 @@ mod tests {
     fn test_parse_clear_history() {
         let console = Console::new();
         let args = vec!["del".to_string(), "--clear-history".to_string()];
-        assert_eq!(parse_args(&console, &args), Command::ClearHistory);
+        assert_eq!(
+            parse_args(&console, &args),
+            Command::ClearHistory { force: false }
+        );
+    }
+
+    #[test]
+    fn test_parse_force_permanent_delete() {
+        let console = Console::new();
+        let args = vec![
+            "del".to_string(),
+            "--force".to_string(),
+            "--permanent".to_string(),
+            "file.txt".to_string(),
+        ];
+
+        match parse_args(&console, &args) {
+            Command::Delete {
+                permanent, force, ..
+            } => {
+                assert!(permanent);
+                assert!(force);
+            }
+            other => panic!("expected Command::Delete, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_parse_force_clear_history() {
+        let console = Console::new();
+        let args = vec![
+            "del".to_string(),
+            "--force".to_string(),
+            "--clear-history".to_string(),
+        ];
+
+        assert_eq!(
+            parse_args(&console, &args),
+            Command::ClearHistory { force: true }
+        );
     }
 
     #[test]

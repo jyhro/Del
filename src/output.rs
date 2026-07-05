@@ -21,6 +21,7 @@ pub fn print_usage() {
     println!("  -r, --restore [N]       Restaurar archivo/carpeta (último o por índice N)");
     println!("  --history               Mostrar historial de eliminaciones");
     println!("  --clear-history         Limpiar historial de eliminaciones");
+    println!("  --force                 Omite confirmaciones interactivas");
     println!("  -v, --version           Muestra la versión");
     println!("  --help                  Muestra esta ayuda");
 }
@@ -89,7 +90,7 @@ pub fn show_history(console: &Console, entries: &[domain::HistoryEntry], pruned:
     if pruned > 0 {
         warn(
             console,
-            &format!("{} entradas obsoletas eliminadas del historial", pruned),
+            format!("{} entradas obsoletas eliminadas del historial", pruned),
         );
     }
 }
@@ -121,6 +122,10 @@ pub fn show_clear_history_warning() {
     let _ = io::stdout().flush();
 }
 
+pub fn show_force_confirmation_skipped(console: &Console) {
+    warn(console, "Confirmación omitida por --force");
+}
+
 pub fn confirm() -> Result<bool, Error> {
     let mut input = String::new();
     io::stdin().read_line(&mut input)?;
@@ -147,10 +152,7 @@ pub fn unknown_flag_with_suggestion(console: &Console, unknown: &str, suggestion
 }
 
 pub fn unknown_flag(console: &Console, flag: &str) {
-    console.print(&format!(
-        "[bold red]✗[/] Flag desconocido: '{}'",
-        flag
-    ));
+    console.print(&format!("[bold red]✗[/] Flag desconocido: '{}'", flag));
 }
 
 pub struct Spinner {
