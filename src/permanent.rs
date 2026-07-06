@@ -7,7 +7,7 @@ use std::io::{self, Write};
 use std::path::Path;
 use walkdir::WalkDir;
 
-use crate::domain::{Delete, DeleteOutcome, Error};
+use crate::domain::{Delete, DeleteOutcome, DeletePreview, Error};
 
 /// Eliminador permanente de archivos y carpetas.
 pub struct PermanentDeleter;
@@ -16,6 +16,13 @@ impl PermanentDeleter {
     /// Crea un eliminador permanente.
     pub fn new() -> Self {
         PermanentDeleter
+    }
+
+    /// Calcula la eliminacion permanente sin tocar el archivo.
+    pub fn preview_delete(&self, path: &Path) -> DeletePreview {
+        DeletePreview::Permanent {
+            path: path.to_path_buf(),
+        }
     }
 }
 

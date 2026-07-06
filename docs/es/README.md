@@ -10,6 +10,7 @@ Objetivos principales: mover archivos a una papelera local, llevar un historial 
 - Restaurar por índice de historial o restaurar la eliminación más reciente
 - Registrar timestamps y tamaños en un archivo de historial compacto
 - Opción de sobrescritura segura (`-p`) para borrados irreversibles
+- Modo simulación (`--dry-run`) para previsualizar acciones sin tocar archivos
 - Salida de terminal amigable mediante `rich_rust`
 
 ## Ejemplos rápidos
@@ -24,6 +25,12 @@ Eliminar varios archivos o directorios:
 
 ```bash
 del archivo1.txt archivo2.txt mi_carpeta/
+```
+
+Simular una eliminación sin mover ni borrar archivos:
+
+```bash
+del --dry-run archivo.txt
 ```
 
 Restaurar la última entrada eliminada:

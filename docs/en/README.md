@@ -10,6 +10,7 @@ Core goals: move files to a trash folder, track history for easy restores, and p
 - Restore by history index or restore the most recent deletion
 - Track timestamps and sizes in a compact history file
 - Optional secure overwrite (`-p`) for irreversible deletion
+- Dry-run mode (`--dry-run`) to preview actions without touching files
 - Human-friendly terminal output via `rich_rust`
 
 ## Quick examples
@@ -24,6 +25,12 @@ Delete multiple files or directories:
 
 ```bash
 del file1.txt file2.txt my_folder/
+```
+
+Preview a deletion without moving or deleting files:
+
+```bash
+del --dry-run file.txt
 ```
 
 Restore the last deleted entry:
