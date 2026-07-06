@@ -24,6 +24,7 @@ pub fn print_usage() {
     println!("  --history               Mostrar historial de eliminaciones");
     println!("  --clear-history         Limpiar historial de eliminaciones");
     println!("  --dry-run               Simula la acción sin mover, eliminar ni restaurar");
+    println!("  --force                 Omite confirmaciones interactivas");
     println!("  -v, --version           Muestra la versión");
     println!("  --help                  Muestra esta ayuda");
 }
@@ -142,7 +143,7 @@ pub fn show_history(
         if dry_run {
             warn(
                 console,
-                &format!(
+                format!(
                     "{} entradas obsoletas detectadas (no eliminadas por --dry-run)",
                     pruned
                 ),
@@ -150,7 +151,7 @@ pub fn show_history(
         } else {
             warn(
                 console,
-                &format!("{} entradas obsoletas eliminadas del historial", pruned),
+                format!("{} entradas obsoletas eliminadas del historial", pruned),
             );
         }
     }
@@ -225,6 +226,10 @@ pub fn show_clear_history_warning() {
     println!("⚠️  Se eliminará todo el historial de eliminaciones");
     print!("¿Está seguro? (s/n): ");
     let _ = io::stdout().flush();
+}
+
+pub fn show_force_confirmation_skipped(console: &Console) {
+    warn(console, "Confirmación omitida por --force");
 }
 
 pub fn confirm() -> Result<bool, Error> {

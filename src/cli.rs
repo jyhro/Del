@@ -12,6 +12,7 @@ pub enum Command {
         files: Vec<PathBuf>,
         permanent: bool,
         dry_run: bool,
+        force: bool,
     },
     Restore {
         index: Option<usize>,
@@ -22,6 +23,7 @@ pub enum Command {
     },
     ClearHistory {
         dry_run: bool,
+        force: bool,
     },
     Help,
     Version,
@@ -40,6 +42,7 @@ pub fn parse_args(console: &Console, args: &[String]) -> Command {
     let mut show_history = false;
     let mut clear_history = false;
     let mut dry_run = false;
+    let mut force = false;
     let mut help = false;
     let mut version = false;
     let mut files: Vec<PathBuf> = Vec::new();
@@ -71,6 +74,7 @@ pub fn parse_args(console: &Console, args: &[String]) -> Command {
             "--history" => show_history = true,
             "--clear-history" => clear_history = true,
             "--dry-run" => dry_run = true,
+            "--force" => force = true,
             "--version" | "-v" => version = true,
             "--help" | "-h" => help = true,
             arg if !arg.starts_with('-') => files.push(PathBuf::from(arg.to_string())),
@@ -99,7 +103,7 @@ pub fn parse_args(console: &Console, args: &[String]) -> Command {
     }
 
     if clear_history {
-        return Command::ClearHistory { dry_run };
+        return Command::ClearHistory { dry_run, force };
     }
 
     if restore {
@@ -119,6 +123,7 @@ pub fn parse_args(console: &Console, args: &[String]) -> Command {
         files,
         permanent,
         dry_run,
+        force,
     }
 }
 
@@ -132,6 +137,7 @@ fn suggest_flag(unknown: &str) -> Option<&'static str> {
         "--history",
         "--clear-history",
         "--dry-run",
+        "--force",
         "--help",
         "-h",
         "--version",
@@ -153,7 +159,11 @@ fn suggest_flag(unknown: &str) -> Option<&'static str> {
         }
     }
 
-    if best_score >= 3 { best } else { None }
+    if best_score >= 3 {
+        best
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]
@@ -169,10 +179,12 @@ mod tests {
                 files,
                 permanent,
                 dry_run,
+                force,
             } => {
                 assert_eq!(files, vec![PathBuf::from("file.txt")]);
                 assert!(!permanent);
                 assert!(!dry_run);
+                assert!(!force);
             }
             other => panic!("expected Command::Delete, got {:?}", other),
         }
@@ -232,7 +244,49 @@ mod tests {
         let args = vec!["del".to_string(), "--clear-history".to_string()];
         assert_eq!(
             parse_args(&console, &args),
-            Command::ClearHistory { dry_run: false }
+            Command::ClearHistory {
+                dry_run: false,
+                force: false
+            }
+        );
+    }
+
+    #[test]
+    fn test_parse_force_permanent_delete() {
+        let console = Console::new();
+        let args = vec![
+            "del".to_string(),
+            "--force".to_string(),
+            "--permanent".to_string(),
+            "file.txt".to_string(),
+        ];
+
+        match parse_args(&console, &args) {
+            Command::Delete {
+                permanent, force, ..
+            } => {
+                assert!(permanent);
+                assert!(force);
+            }
+            other => panic!("expected Command::Delete, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_parse_force_clear_history() {
+        let console = Console::new();
+        let args = vec![
+            "del".to_string(),
+            "--force".to_string(),
+            "--clear-history".to_string(),
+        ];
+
+        assert_eq!(
+            parse_args(&console, &args),
+            Command::ClearHistory {
+                dry_run: false,
+                force: true
+            }
         );
     }
 
@@ -301,7 +355,10 @@ mod tests {
         ];
         assert_eq!(
             parse_args(&console, &args),
-            Command::ClearHistory { dry_run: true }
+            Command::ClearHistory {
+                dry_run: true,
+                force: false
+            }
         );
     }
 

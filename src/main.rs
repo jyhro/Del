@@ -71,7 +71,7 @@ fn main() {
             }
         }
 
-        Command::ClearHistory { dry_run } => {
+        Command::ClearHistory { dry_run, force } => {
             if !history_file.exists() {
                 output::show_no_history(&console);
                 return;
@@ -89,8 +89,14 @@ fn main() {
                 }
                 return;
             }
-            output::show_clear_history_warning();
-            match output::confirm() {
+            let confirmed = if force {
+                output::show_force_confirmation_skipped(&console);
+                Ok(true)
+            } else {
+                output::show_clear_history_warning();
+                output::confirm()
+            };
+            match confirmed {
                 Ok(true) => {
                     let mgr = make_mgr(trash_dir, history_file);
                     match mgr.clear_history() {
@@ -146,6 +152,7 @@ fn main() {
             files,
             permanent,
             dry_run,
+            force,
         } => {
             let permanent_deleter = PermanentDeleter::new();
             let mgr = make_mgr(trash_dir, history_file);
@@ -207,8 +214,14 @@ fn main() {
                     if let Some(ref s) = spinner {
                         s.clear();
                     }
-                    output::show_permanent_warning(path);
-                    match output::confirm() {
+                    let confirmed = if force {
+                        output::show_force_confirmation_skipped(&console);
+                        Ok(true)
+                    } else {
+                        output::show_permanent_warning(path);
+                        output::confirm()
+                    };
+                    match confirmed {
                         Ok(true) => match permanent_deleter.delete(path) {
                             Ok(outcome) => {
                                 if let Some(ref s) = spinner {
